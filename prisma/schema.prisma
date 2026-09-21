@@ -1,0 +1,50 @@
+// Prisma ist ein ORM.
+// ORM bedeutet Object-Relational Mapping.
+// Das heißt: Wir schreiben JavaScript-Code und Prisma übersetzt vieles in SQL für die Datenbank.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// datasource beschreibt, welche Datenbank Prisma benutzen soll.
+// Die genaue Datenbank-Adresse steht in der .env-Datei, damit keine Zugangsdaten im Code stehen.
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Ein User ist eine Person, die MoodMeal-Einträge speichern kann.
+model User {
+  id    Int    @id @default(autoincrement())
+  name  String
+  email String @unique
+
+  // Relation: Ein User kann viele MoodEntry-Einträge haben.
+  // Dieses Feld ist kein normales Datenbank-Feld, sondern hilft Prisma beim Verbinden der Tabellen.
+  moodEntries MoodEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// Ein MoodEntry speichert, welches Essen zu welcher Stimmung gehört.
+model MoodEntry {
+  id           Int    @id @default(autoincrement())
+  moodBefore   String
+  moodAfter    String
+  meal         String
+  comfortLevel Int
+  note         String?
+
+  // userId ist der Fremdschlüssel.
+  // Er verbindet diesen MoodEntry mit genau einem User.
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("mood_entries")
+}
