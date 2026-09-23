@@ -1,4 +1,4 @@
-// Aufgabe 2: Eine kleine, realistische Fachlogigk aufbauen
+// Aufgabe 2: Eine kleine, realistische Fachlogik aufbauen
 // Aufgabe 4: Randfälle prüfen:
 
 // Berechnung um wieviele Punkte sich die Stimmung verbessert/verschlechtert hat
