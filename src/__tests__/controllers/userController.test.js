@@ -36,6 +36,7 @@ describe("createUser", () => {
   beforeEach(() => {
     res = createResponse();
     next = jest.fn();
+    prismaMock.user.create.mockReset();
   });
 
   test("erstellt einen User erfolgreich", async () => {
@@ -58,8 +59,29 @@ describe("createUser", () => {
     // Act: Wir rufen den Controller direkt mit falschem req, res und next auf.
     await createUser(req, res, next);
 
-    // Assert: Erwartungen kommen gleich im nächsten Schritt.
+    // Assert: Wir prüfen, ob Prisma und die Response richtig benutzt wurden.    // Hat der Controller prisma.user.create(...) aufgerufen?
+    // Und hat er genau name und email an Prisma übergeben?
+    expect(prismaMock.user.create).toHaveBeenCalledWith({
+      data: {
+        name: "Josephine",
+        email: "josephine@example.com",
+      },
+    });
+
+    // Hat der Controller res.status(201) aufgerufen?
+    // Antwortet der Controller mit dem richtigen Statuscode für "Created"?
+    expect(res.status).toHaveBeenCalledWith(201);
+
+    // Hat der Controller genau diese JSON-Antwort gesendet?
+    // Bekommt der Client die richtige Antwort?
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: "User wurde erstellt.",
+      data: user,
+    });
+
+    // Bei einem erfolgreichen Request soll next nicht aufgerufen werden.
+    // next wäre nur für Fehlerfälle wichtig.
+    expect(next).not.toHaveBeenCalled();
   });
-  // Act: Controller-Aufruf kommt gleich im nächsten Schritt.
-  // Assert: Erwartungen kommen gleich im nächsten Schritt.
 });
