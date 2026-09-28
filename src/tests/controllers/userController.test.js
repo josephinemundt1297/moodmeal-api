@@ -14,6 +14,7 @@ import { createResponse } from "../helpers/expressMocks.js";
 const prismaMock = {
   user: {
     create: jest.fn(),
+    findUnique: jest.fn(),
   },
 };
 
@@ -24,9 +25,12 @@ jest.unstable_mockModule("../../database/prismaClient.js", () => ({
 }));
 
 let createUser;
+let getUserMoodEntries;
 
 beforeAll(async () => {
-  ({ createUser } = await import("../../controllers/userController.js"));
+  ({ createUser, getUserMoodEntries } = await import(
+    "../../controllers/userController.js"
+  ));
 });
 
 describe("createUser", () => {
@@ -37,6 +41,7 @@ describe("createUser", () => {
     res = createResponse();
     next = jest.fn();
     prismaMock.user.create.mockReset();
+    prismaMock.user.findUnique.mockReset();
   });
 
   test("erstellt einen User erfolgreich", async () => {
@@ -59,7 +64,8 @@ describe("createUser", () => {
     // Act: Wir rufen den Controller direkt mit falschem req, res und next auf.
     await createUser(req, res, next);
 
-    // Assert: Wir prüfen, ob Prisma und die Response richtig benutzt wurden.    // Hat der Controller prisma.user.create(...) aufgerufen?
+    // Assert: Wir prüfen, ob Prisma und die Response richtig benutzt wurden.
+    // Hat der Controller prisma.user.create(...) aufgerufen?
     // Und hat er genau name und email an Prisma übergeben?
     expect(prismaMock.user.create).toHaveBeenCalledWith({
       data: {
@@ -82,6 +88,87 @@ describe("createUser", () => {
 
     // Bei einem erfolgreichen Request soll next nicht aufgerufen werden.
     // next wäre nur für Fehlerfälle wichtig.
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test("gibt doppelte E-Mail als Conflict-Fehler weiter", async () => {
+    // Arrange: Wir simulieren den Prisma-Fehler fuer ein eindeutiges Feld.
+    const error = new Error("Unique constraint failed");
+    error.code = "P2002";
+
+    const req = {
+      body: {
+        name: "Josephine",
+        email: "josephine@example.com",
+      },
+    };
+
+    prismaMock.user.create.mockRejectedValue(error);
+
+    // Act: Der Controller bekommt einen Request, bei dem Prisma ablehnt.
+    await createUser(req, res, next);
+
+    // Assert: Der Fehler wird fuer unsere API verstaendlich vorbereitet.
+    expect(next).toHaveBeenCalledWith(error);
+    expect(error.statusCode).toBe(409);
+    expect(error.publicMessage).toBe(
+      "Diese E-Mail-Adresse wird bereits benutzt.",
+    );
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+  });
+});
+
+describe("getUserMoodEntries", () => {
+  let res;
+  let next;
+
+  beforeEach(() => {
+    res = createResponse();
+    next = jest.fn();
+    prismaMock.user.create.mockReset();
+    prismaMock.user.findUnique.mockReset();
+  });
+
+  test("holt einen User mit seinen MoodMeal-Eintraegen", async () => {
+    // Arrange: params.id kommt aus einer URL immer als String.
+    const user = {
+      id: 1,
+      name: "Josephine",
+      email: "josephine@example.com",
+      moodEntries: [
+        {
+          id: 1,
+          meal: "Miso-Suppe",
+          moodBefore: "gestresst",
+          moodAfter: "ruhiger",
+          comfortLevel: 5,
+          userId: 1,
+        },
+      ],
+    };
+
+    const req = {
+      params: {
+        id: "1",
+      },
+    };
+
+    prismaMock.user.findUnique.mockResolvedValue(user);
+
+    // Act: Wir rufen den Controller direkt auf.
+    await getUserMoodEntries(req, res, next);
+
+    // Assert: Prisma bekommt die ID als Zahl und laedt die Relation mit.
+    expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+      where: { id: 1 },
+      include: { moodEntries: true },
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: user,
+    });
     expect(next).not.toHaveBeenCalled();
   });
 });
