@@ -19,14 +19,14 @@ const prismaMock = {
 
 // Wir ersetzen den echten Prisma Client durch unsere Attrappe.
 // So spricht der Test nicht mit der echten Datenbank.
-jest.unstable_mockModule("../../src/database/prismaClient.js", () => ({
+jest.unstable_mockModule("../../database/prismaClient.js", () => ({
   default: prismaMock,
 }));
 
 let createUser;
 
 beforeAll(async () => {
-  ({ createUser } = await import("../../src/controllers/userController.js"));
+  ({ createUser } = await import("../../controllers/userController.js"));
 });
 
 describe("createUser", () => {
